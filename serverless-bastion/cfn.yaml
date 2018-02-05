@@ -1,3 +1,4 @@
+---
 AWSTemplateFormatVersion: 2010-09-09
 Description: "Fargate for serverless bastion"
 
@@ -199,7 +200,7 @@ Resources:
       Memory: 512
       ContainerDefinitions:
         - Name: bastion
-          Image: pottava/fargate-shell:1.0
+          Image: fijimunkii/fargate-shell:latest
           Command:
             - "-d"
           PortMappings: 
