@@ -30,22 +30,10 @@ Resources:
     Properties:
       EnableDnsSupport: true
       EnableDnsHostnames: true
-      CidrBlock:
-        Fn::FindInMap:
-          - SubnetConfig
-          - VPC
-          - CIDR
-      Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+      CidrBlock: !FindInMap [ SubnetConfig, VPC, CIDR ]
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
-    DependsOn: VPC
-    Properties:
-      Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -59,20 +47,8 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       MapPublicIpOnLaunch: true
-      AvailabilityZone:
-        Fn::Select:
-          - 0
-          - Fn::GetAZs: ""
-      CidrBlock:
-        Fn::FindInMap:
-          - SubnetConfig
-          - Public1
-          - CIDR
-      Tags:
-        - Key: Name
-          Value: "Public Subnet 1"
-        - Key: Application
-          Value: !Ref AWS::StackName
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !FindInMap [ SubnetConfig, Public1, CIDR ]
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -80,20 +56,8 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       MapPublicIpOnLaunch: true
-      AvailabilityZone:
-        Fn::Select:
-          - 1
-          - Fn::GetAZs: ""
-      CidrBlock:
-        Fn::FindInMap:
-          - SubnetConfig
-          - Public2
-          - CIDR
-      Tags:
-        - Key: Name
-          Value: "Public Subnet 2"
-        - Key: Application
-          Value: !Ref AWS::StackName
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !FindInMap [ SubnetConfig, Public2, CIDR ]
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -102,11 +66,6 @@ Resources:
       - AttachGateway
     Properties:
       VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: Public
-        - Key: Application
-          Value: !Ref AWS::StackName
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -140,21 +99,18 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: "0.0.0.0/0"
-      Tags:
-        - Key: Name
-          Value: sg-for-bastion
 
   CloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 1
 
-  BastionCluster:
+  Cluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Ref AWS::StackName
 
-  ExecutionRole:
+  TaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -187,7 +143,7 @@ Resources:
                 Resource: "*"
       Path: /
 
-  BastionTask:
+  Task:
     Type: AWS::ECS::TaskDefinition
     Properties: 
       Family: !Ref AWS::StackName
@@ -195,7 +151,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       TaskRoleArn: !Ref TaskRole
-      ExecutionRoleArn: !Ref ExecutionRole
+      ExecutionRoleArn: !Ref TaskExecutionRole
       Cpu: 256
       Memory: 512
       ContainerDefinitions:
@@ -217,15 +173,18 @@ Resources:
               awslogs-stream-prefix: bastion
           Essential: true
 
-Outputs:
-  PublicSubnet1:
-    Value: !Ref PublicSubnet1
-
-  PublicSubnet2:
-    Value: !Ref PublicSubnet2
-
-  SecurityGroup:
-    Value: !Ref SecurityGroup
-
-  Cluster:
-    Value: !Ref BastionCluster
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      LaunchType: FARGATE
+      Cluster: !Ref Cluster
+      DesiredCount: 1
+      TaskDefinition: !Ref Task
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups: 
+            - !Ref SecurityGroup
