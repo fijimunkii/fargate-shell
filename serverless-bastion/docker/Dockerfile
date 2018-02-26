@@ -1,7 +1,7 @@
 FROM alpine:3.6
 
 # Python 2.7
-RUN apk --no-cache add python2=2.7.13-r1
+RUN apk --no-cache add python2=2.7.14-r0
 
 # AWS-CLI 1.14
 RUN apk --no-cache add less groff jq
