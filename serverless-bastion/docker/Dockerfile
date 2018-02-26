@@ -15,7 +15,10 @@ RUN apk --no-cache add openssh \
     && sed -i s/#PermitUserEnvironment.*/PermitUserEnvironment\ yes/ /etc/ssh/sshd_config
 
 # for better experience
-RUN apk --no-cache add tini bash sudo curl vim nano less
+RUN apk --no-cache add tini bash sudo curl vim nano less wget
+
+# node
+RUN apk --no-cache add nodejs nodejs-npm
 
 RUN addgroup fargate && adduser -s /bin/bash -D -G fargate fargate
 ADD environment /home/fargate/.ssh/environment
